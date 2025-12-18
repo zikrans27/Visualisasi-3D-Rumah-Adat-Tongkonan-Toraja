@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualisasi Tongkonan 3D</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: Arial, sans-serif; }
+        canvas { display: block; }
+
+        /* --- GAYA LOADING SCREEN --- */
+        #loading-screen {
+            position: absolute;
+            z-index: 9999; /* Pastikan di paling atas */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #1a1a1a; /* Latar belakang gelap */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            transition: opacity 0.5s ease-out; /* Efek memudar saat selesai */
+        }
+
+        #loading-box {
+            text-align: center;
+            color: white;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #FFD700; /* Warna Emas */
+            letter-spacing: 2px;
+        }
+
+        p {
+            font-size: 14px;
+            color: #ccc;
+            margin-bottom: 20px;
+        }
+
+        /* Kotak Progress Bar Luar */
+        #progress-container {
+            width: 300px;
+            height: 6px;
+            background-color: #333;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+
+        /* Batang Progress Bar Dalam (yang bergerak) */
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #FFD700; /* Warna Emas */
+            transition: width 0.2s;
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    
+    <div id="loading-screen">
+        <div id="loading-box">
+            <h1>TONGKONAN 3D</h1>
+            <p>Sedang memuat aset...</p>
+            <div id="progress-container">
+                <div id="progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+</body>
+</html>
