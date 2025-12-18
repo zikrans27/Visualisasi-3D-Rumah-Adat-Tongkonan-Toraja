@@ -63,7 +63,7 @@ document.body.appendChild(renderer.domElement);
 const textureLoader = new THREE.TextureLoader(loadingManager);
 
 // A. Langit
-textureLoader.load('./qwantani_puresky.jpg', function(texture) {
+textureLoader.load('./qwantani_dawn_puresky.jpg', function(texture) {
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.mapping = THREE.EquirectangularReflectionMapping;
     scene.background = texture;
@@ -418,4 +418,5 @@ function animate() {
     controls.update();
     renderer.render(scene, camera);
 }
+
 animate();
