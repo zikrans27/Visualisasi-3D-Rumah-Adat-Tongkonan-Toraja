@@ -338,6 +338,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
 document.body.appendChild(renderer.domElement);
 
 // --- 2.1 POST PROCESSING (DINONAKTIFKAN) ---
@@ -426,16 +427,22 @@ cloudShadowMesh.position.y = -0.04; // Sedikit di atas tanah (-0.05) agar tidak 
 scene.add(cloudShadowMesh);
 
 // --- 4. LIGHTING ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
-scene.add(ambientLight);
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+hemiLight.position.set(0, 50, 0);
+scene.add(hemiLight);
 
 const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
 sunLight.position.set(10, 20, 10);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
-sunLight.shadow.mapSize.width = 1024; // Turunkan resolusi shadow agar tidak black screen
-sunLight.shadow.mapSize.height = 1024;
+sunLight.shadow.bias = -0.0001;
+sunLight.shadow.normalBias = 0.05;
+const d = 30;
+sunLight.shadow.camera.left = -d;
+sunLight.shadow.camera.right = d;
+sunLight.shadow.camera.top = d;
+sunLight.shadow.camera.bottom = -d;
 scene.add(sunLight);
 
 // Setup Lens Flare (Efek Silau Matahari)
@@ -490,13 +497,17 @@ for(let i=0; i<15; i++) {
 }
 
 // Pegunungan
-const mGeo = new THREE.ConeGeometry(30, 40, 4);
-const mMat = new THREE.MeshStandardMaterial({ color: 0x2F4F4F });
+const mGeo = new THREE.SphereGeometry(60, 64, 32, 0, Math.PI * 2, 0, Math.PI * 0.45); // Gunakan setengah bola agar melengkung halus
 for(let i=0; i<8; i++) {
+    // Buat warna dasar dan beri variasi acak (terang/gelap)
+    const color = new THREE.Color(0x2F4F4F);
+    color.offsetHSL(0, 0, (Math.random() - 0.5) * 0.15); // Variasi lightness +/- 7.5%
+    const mMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.9 });
+
     const m = new THREE.Mesh(mGeo, mMat);
-    const a = (i/8)*Math.PI, rad=80;
-    m.position.set(Math.cos(a)*rad*1.5, -5, -50-Math.sin(a)*rad*0.5);
-    m.scale.setScalar(1+Math.random()*1.5); 
+    const a = (i/8)*Math.PI, rad=160; // Jarak diperjauh sedikit
+    m.position.set(Math.cos(a)*rad*1.5, -20, -100-Math.sin(a)*rad*0.6); // Posisi diturunkan agar menyatu dengan tanah
+    m.scale.set(1.5+Math.random(), 0.4+Math.random()*0.5, 1.5+Math.random()); // Skala dipipihkan (lebar tapi tidak terlalu tinggi)
     scene.add(m);
 }
 
@@ -635,7 +646,7 @@ const params = { Jam: 12, PutarOtomatis: true, Hujan: false, ModeNyata: false };
 
 // Setup Sistem Hujan
 const rainGeo = new THREE.BufferGeometry();
-const rainCount = 10000;
+const rainCount = 25000; // Jumlah partikel diperbanyak agar lebih deras
 const rainPos = new Float32Array(rainCount * 3);
 for(let i=0; i<rainCount*3; i+=3){
     rainPos[i] = (Math.random() - 0.5) * 100;     // Sebaran X
@@ -643,14 +654,25 @@ for(let i=0; i<rainCount*3; i+=3){
     rainPos[i+2] = (Math.random() - 0.5) * 100;   // Sebaran Z
 }
 rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
-const rainMat = new THREE.PointsMaterial({ color: 0xaaaaaa, size: 0.1, transparent: true, opacity: 0.8 });
+
+// Buat tekstur bulat untuk partikel (Hujan & Splash)
+const canvasRain = document.createElement('canvas');
+canvasRain.width = 32; canvasRain.height = 32;
+const ctxRain = canvasRain.getContext('2d');
+ctxRain.fillStyle = 'white';
+ctxRain.beginPath();
+ctxRain.arc(16, 16, 15, 0, Math.PI * 2);
+ctxRain.fill();
+const rainTexture = new THREE.CanvasTexture(canvasRain);
+
+const rainMat = new THREE.PointsMaterial({ color: 0xaaaaaa, size: 0.15, map: rainTexture, transparent: true, opacity: 0.8, depthWrite: false });
 const rainSystem = new THREE.Points(rainGeo, rainMat);
 rainSystem.visible = false;
 scene.add(rainSystem);
 
 // Setup Splash (Cipratan Air)
 const splashGeo = new THREE.BufferGeometry();
-const splashCount = 3000; // Jumlah partikel cipratan
+const splashCount = 6000; // Kapasitas cipratan ditambah
 const splashPos = new Float32Array(splashCount * 3);
 const splashLife = new Float32Array(splashCount); // Umur cipratan
 
@@ -658,7 +680,7 @@ for(let i=0; i<splashCount*3; i+=3){
     splashPos[i+1] = -100; // Sembunyikan di bawah tanah saat awal
 }
 splashGeo.setAttribute('position', new THREE.BufferAttribute(splashPos, 3));
-const splashMat = new THREE.PointsMaterial({ color: 0xdddddd, size: 0.2, transparent: true, opacity: 0.6 });
+const splashMat = new THREE.PointsMaterial({ color: 0xdddddd, size: 0.4, map: rainTexture, transparent: true, opacity: 0.6, depthWrite: false });
 const splashSystem = new THREE.Points(splashGeo, splashMat);
 splashSystem.visible = false;
 scene.add(splashSystem);
@@ -683,7 +705,19 @@ for(let i=0; i<fireflyCount; i++){
 }
 fireflyGeo.setAttribute('position', new THREE.BufferAttribute(fireflyPos, 3));
 fireflyGeo.setAttribute('color', new THREE.BufferAttribute(fireflyColors, 3));
-const fireflyMat = new THREE.PointsMaterial({ vertexColors: true, size: 0.15, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
+
+// Buat tekstur glow bulat untuk kunang-kunang
+const canvasFirefly = document.createElement('canvas');
+canvasFirefly.width = 32; canvasFirefly.height = 32;
+const ctxFirefly = canvasFirefly.getContext('2d');
+const gradFirefly = ctxFirefly.createRadialGradient(16, 16, 2, 16, 16, 16);
+gradFirefly.addColorStop(0, 'white');
+gradFirefly.addColorStop(1, 'rgba(255,255,255,0)');
+ctxFirefly.fillStyle = gradFirefly;
+ctxFirefly.fillRect(0, 0, 32, 32);
+const fireflyTexture = new THREE.CanvasTexture(canvasFirefly);
+
+const fireflyMat = new THREE.PointsMaterial({ vertexColors: true, size: 0.8, map: fireflyTexture, transparent: true, opacity: 1.0, blending: THREE.AdditiveBlending, depthWrite: false });
 const fireflySystem = new THREE.Points(fireflyGeo, fireflyMat);
 scene.add(fireflySystem);
 
@@ -753,7 +787,9 @@ function updateMatahari() {
     scene.background = skyColor;
     scene.fog.density = fogDens;
     sunLight.intensity = sunInt;
-    ambientLight.intensity = ambInt;
+    hemiLight.color.copy(skyColor);
+    hemiLight.groundColor.copy(skyColor).multiplyScalar(0.2);
+    hemiLight.intensity = ambInt;
     frontLight.intensity = lampInt;
     bottomLight.intensity = lampInt * 0.4;
 
@@ -1367,7 +1403,7 @@ function animate() {
         const splashPositions = splashSystem.geometry.attributes.position.array;
 
         for(let i=1; i<rainCount*3; i+=3){
-            positions[i] -= 0.4; // Kecepatan jatuh
+            positions[i] -= 0.9; // Kecepatan jatuh dipercepat
             if (positions[i] < 0) {
                 // --- LOGIKA CIPRATAN ---
                 // Ambil partikel splash berikutnya dari antrian
@@ -1387,7 +1423,7 @@ function animate() {
         // Animasi Partikel Cipratan
         for(let i=0; i<splashCount; i++){
             if(splashLife[i] > 0){
-                splashLife[i] -= 0.1; // Kurangi umur dengan cepat
+                splashLife[i] -= 0.2; // Kurangi umur dengan cepat
                 splashPositions[i*3+1] += 0.1; // Gerak memantul naik
             } else {
                 splashPositions[i*3+1] = -100; // Sembunyikan jika umur habis
